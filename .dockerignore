@@ -1,0 +1,6 @@
+# Nur das an den Docker-Build schicken, was das Image wirklich braucht
+*
+!Dockerfile
+!target/itsm-demo.war
+!target/dependency/postgresql.jar
+!docker/configure.cli

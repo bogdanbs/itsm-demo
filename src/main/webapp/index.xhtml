@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:p="http://primefaces.org/ui">
+<h:head>
+    <title>ITSM Demo</title>
+</h:head>
+<h:body style="max-width: 720px; margin: 2rem auto; font-family: sans-serif;">
+    <h:form id="statusForm">
+        <p:growl id="messages" showDetail="true"/>
+
+        <p:panel header="ITSM Demo – Systemstatus">
+            <h:panelGrid columns="2" cellpadding="6">
+                <h:outputText value="Datenbank:"/>
+                <p:tag value="#{statusBean.databaseInfo.connected() ? 'verbunden' : 'nicht erreichbar'}"
+                       severity="#{statusBean.databaseInfo.connected() ? 'success' : 'danger'}"/>
+
+                <h:outputText value="Produkt:" rendered="#{statusBean.databaseInfo.connected()}"/>
+                <h:outputText value="#{statusBean.databaseInfo.product()}"
+                              rendered="#{statusBean.databaseInfo.connected()}"/>
+
+                <h:outputText value="Fehler:" rendered="#{not statusBean.databaseInfo.connected()}"/>
+                <h:outputText value="#{statusBean.databaseInfo.message()}"
+                              rendered="#{not statusBean.databaseInfo.connected()}"/>
+
+                <h:outputText value="Letzte Prüfung:"/>
+                <h:outputText value="#{statusBean.lastCheck} (Prüfung Nr. #{statusBean.checks})"/>
+            </h:panelGrid>
+
+            <p:commandButton value="Erneut prüfen" icon="pi pi-refresh"
+                             action="#{statusBean.refresh}"
+                             update="@form" style="margin-top: 1rem;"/>
+        </p:panel>
+    </h:form>
+</h:body>
+</html>

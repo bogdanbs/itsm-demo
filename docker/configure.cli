@@ -1,0 +1,13 @@
+# Wird beim Bauen des Images ausgeführt (siehe Dockerfile).
+# Installiert den PostgreSQL-Treiber als WildFly-Modul und legt die Datasource an.
+# Die Verbindungsdaten kommen zur Laufzeit aus Umgebungsvariablen (Kubernetes Secret).
+
+embed-server --std-out=echo --server-config=standalone.xml
+
+module add --name=org.postgresql --resources=/tmp/postgresql.jar --dependencies=java.se,jakarta.transaction.api
+
+/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql, driver-module-name=org.postgresql, driver-xa-datasource-class-name=org.postgresql.xa.PGXADataSource)
+
+data-source add --name=ItsmDS --jndi-name=java:jboss/datasources/ItsmDS --driver-name=postgresql --connection-url=jdbc:postgresql://${env.DB_HOST:localhost}:${env.DB_PORT:5432}/${env.DB_NAME:itsm} --user-name=${env.DB_USER:itsm} --password=${env.DB_PASSWORD:itsm} --validate-on-match=true --background-validation=false --valid-connection-checker-class-name=org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker --exception-sorter-class-name=org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter
+
+stop-embedded-server
