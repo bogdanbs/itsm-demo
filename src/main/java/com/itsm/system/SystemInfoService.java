@@ -1,4 +1,4 @@
-package de.bintintan.itsm.system;
+package com.itsm.system;
 
 import jakarta.annotation.Resource;
 import jakarta.enterprise.context.ApplicationScoped;

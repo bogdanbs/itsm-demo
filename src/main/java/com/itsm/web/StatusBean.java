@@ -1,7 +1,7 @@
-package de.bintintan.itsm.web;
+package com.itsm.web;
 
-import de.bintintan.itsm.system.DatabaseInfo;
-import de.bintintan.itsm.system.SystemInfoService;
+import com.itsm.system.DatabaseInfo;
+import com.itsm.system.SystemInfoService;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;

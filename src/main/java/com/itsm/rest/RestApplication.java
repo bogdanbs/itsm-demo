@@ -1,4 +1,4 @@
-package de.bintintan.itsm.rest;
+package com.itsm.rest;
 
 import jakarta.ws.rs.ApplicationPath;
 import jakarta.ws.rs.core.Application;

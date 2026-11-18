@@ -1,4 +1,4 @@
-package de.bintintan.itsm.system;
+package com.itsm.system;
 
 /**
  * Ergebnis der Datenbankprüfung.
