@@ -29,11 +29,11 @@ spec:
             - secretRef:
                 name: itsm-db       # DB_NAME, DB_USER, DB_PASSWORD
           readinessProbe:
-            httpGet: { path: /itsm-demo/api/health, port: http }
+            httpGet: { path: /itsm-demo/api/health/ready, port: http }
             initialDelaySeconds: 15
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /itsm-demo/api/health, port: http }
+            httpGet: { path: /itsm-demo/api/health/live, port: http }
             initialDelaySeconds: 60
             periodSeconds: 10
             failureThreshold: 3
