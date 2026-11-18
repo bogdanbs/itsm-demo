@@ -1,5 +1,5 @@
-# WildFly 34 (Jakarta EE 10) auf Java 21
-FROM quay.io/wildfly/wildfly:34.0.1.Final-jdk21
+# WildFly 42 (Jakarta EE 10) auf Java 21
+FROM quay.io/wildfly/wildfly:42.0.0.Final-jdk21
 
 # 1) PostgreSQL-Treiber als Modul installieren und Datasource konfigurieren
 COPY --chown=jboss:root target/dependency/postgresql.jar /tmp/postgresql.jar
