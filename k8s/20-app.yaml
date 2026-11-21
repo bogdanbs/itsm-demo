@@ -21,6 +21,8 @@ spec:
             - name: http
               containerPort: 8080
           env:
+            - name: FLYWAY_ENABLED
+              value: "true"
             - name: DB_HOST
               value: postgres       # Name des Kubernetes-Service
             - name: DB_PORT
