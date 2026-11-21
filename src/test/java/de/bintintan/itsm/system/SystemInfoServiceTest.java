@@ -1,4 +1,4 @@
-package com.itsm.system;
+package de.bintintan.itsm.system;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

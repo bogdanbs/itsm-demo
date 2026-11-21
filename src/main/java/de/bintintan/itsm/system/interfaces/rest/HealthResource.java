@@ -1,6 +1,6 @@
-package com.itsm.rest;
+package de.bintintan.itsm.system.interfaces.rest;
 
-import com.itsm.system.SystemInfoService;
+import de.bintintan.itsm.system.SystemInfoService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
