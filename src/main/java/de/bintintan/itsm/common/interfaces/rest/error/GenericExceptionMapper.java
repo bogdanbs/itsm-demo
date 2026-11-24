@@ -1,5 +1,6 @@
 package de.bintintan.itsm.common.interfaces.rest.error;
 
+import jakarta.persistence.OptimisticLockException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -21,6 +22,19 @@ public class GenericExceptionMapper implements ExceptionMapper<Exception> {
             return webEx.getResponse();
         }
 
+        if (hasOptimisticLockCause(exception)) {
+            ErrorResponse body = new ErrorResponse(
+                    Response.Status.PRECONDITION_FAILED.getStatusCode(),
+                    "Ticket version conflict",
+                    "The ticket has changed; retrieve it and retry.",
+                    Instant.now()
+            );
+            return Response.status(Response.Status.PRECONDITION_FAILED)
+                    .type(MediaType.APPLICATION_JSON)
+                    .entity(body)
+                    .build();
+        }
+
         LOG.log(Level.SEVERE, "Unhandled exception occurred", exception);
 
         ErrorResponse body = new ErrorResponse(
@@ -34,5 +48,14 @@ public class GenericExceptionMapper implements ExceptionMapper<Exception> {
                 .type(MediaType.APPLICATION_JSON)
                 .entity(body)
                 .build();
+    }
+
+    private boolean hasOptimisticLockCause(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof OptimisticLockException) {
+                return true;
+            }
+        }
+        return false;
     }
 }

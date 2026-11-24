@@ -1,6 +1,8 @@
 package de.bintintan.itsm.ticket.application;
 
+import de.bintintan.itsm.ticket.application.error.TicketNotFoundException;
 import de.bintintan.itsm.ticket.domain.*;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -25,8 +27,12 @@ public class TicketService {
         this.ticketRepository = ticketRepository;
     }
 
-    public Ticket create(String title, String description, TicketPriority priority, Instant dueAt) {
-        return ticketRepository.save(new Ticket(title, description, priority, dueAt));
+    public Ticket create(String title, String description, TicketPriority priority, Instant dueAt, UUID assigneeId) {
+        Ticket ticket = new Ticket(title, description, priority, dueAt);
+        if (assigneeId != null) {
+            ticket.assignTo(assigneeId);
+        }
+        return ticketRepository.save(ticket);
     }
 
     @Transactional(Transactional.TxType.SUPPORTS)
@@ -58,4 +64,17 @@ public class TicketService {
     public Page<Ticket> findTickets(@Min(0) int page, @Min(1) @Max(100) int size) {
         return ticketRepository.findTickets(page, size);
     }
+
+    @Nonnull
+    public Ticket update(@Nonnull UUID id, int expectedVersion, UpdateTicketCommand ticketCommand)
+            throws TicketVersionConflictException {
+        Ticket ticket = ticketRepository.findById(id).orElseThrow(() -> new TicketNotFoundException(id));
+        ticket.verifyVersion(expectedVersion);
+
+        ticket.assignTo(ticketCommand.assigneeId());
+        ticket.updateData(ticketCommand.title(), ticketCommand.description(), ticketCommand.priority(),
+                ticketCommand.dueAt());
+        return ticket;
+    }
+
 }

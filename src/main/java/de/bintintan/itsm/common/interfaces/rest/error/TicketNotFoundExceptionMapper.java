@@ -1,6 +1,6 @@
 package de.bintintan.itsm.common.interfaces.rest.error;
 
-import de.bintintan.itsm.ticket.application.TicketNotFoundException;
+import de.bintintan.itsm.ticket.application.error.TicketNotFoundException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
@@ -14,9 +14,8 @@ public class TicketNotFoundExceptionMapper implements ExceptionMapper<TicketNotF
 
     @Override
     public Response toResponse(TicketNotFoundException exception) {
-        ErrorResponse body =
-                new ErrorResponse(Response.Status.NOT_FOUND.getStatusCode(), "Ticket not found",
-                        exception.getLocalizedMessage(), Instant.now().truncatedTo(ChronoUnit.MILLIS));
+        ErrorResponse body = new ErrorResponse(Response.Status.NOT_FOUND.getStatusCode(), "Ticket not found",
+                exception.getLocalizedMessage(), Instant.now().truncatedTo(ChronoUnit.MILLIS));
 
         return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(body).build();
     }

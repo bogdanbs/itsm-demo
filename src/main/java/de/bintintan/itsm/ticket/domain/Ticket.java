@@ -1,9 +1,11 @@
 package de.bintintan.itsm.ticket.domain;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -171,6 +173,12 @@ public class Ticket {
         }
     }
 
+    public void verifyVersion(int expectedVersion) throws TicketVersionConflictException {
+        if (version != expectedVersion) {
+            throw new TicketVersionConflictException(id, expectedVersion, version);
+        }
+    }
+
     public UUID getId() {
         return id;
     }
@@ -223,15 +231,22 @@ public class Ticket {
         return version;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public void setDescription(String description) {
+    public void updateData(@Nullable String title,
+                           @Nullable String description,
+                           @Nullable TicketPriority priority,
+                           @Nullable Instant dueAt) {
+        if (this.status == TicketStatus.CLOSED) {
+            throw new TicketProcessingException("Ticket is closed and can no longer be updated.");
+        }
+        if (!StringUtils.isBlank(title)) {
+            this.title = title;
+        }
         this.description = description;
-    }
-
-    public void setPriority(TicketPriority priority) {
-        this.priority = priority;
+        if (priority != null) {
+            this.priority = priority;
+        }
+        if (dueAt != null) {
+            this.dueAt = dueAt;
+        }
     }
 }

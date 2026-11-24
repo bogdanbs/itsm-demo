@@ -6,6 +6,7 @@ import de.bintintan.itsm.ticket.domain.TicketPriority;
 import de.bintintan.itsm.ticket.domain.TicketStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.Persistence;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -90,6 +91,64 @@ class JpaTicketRepositoryIntegrationTest {
 
         assertThrows(IllegalArgumentException.class, () -> repository.findTickets(0, 0));
         assertThrows(IllegalArgumentException.class, () -> repository.findTickets(0, -1));
+    }
+
+    @Test
+    void detectsConcurrentTicketUpdatesUsingVersion() {
+        UUID ticketId;
+        EntityManager setupManager = entityManagerFactory.createEntityManager();
+        try {
+            setupManager.getTransaction().begin();
+            Ticket ticket = new Ticket("Optimistic locking", "Version test", TicketPriority.MEDIUM, DUE_AT);
+            setupManager.persist(ticket);
+            setupManager.getTransaction().commit();
+            ticketId = ticket.getId();
+        } finally {
+            if (setupManager.getTransaction().isActive()) {
+                setupManager.getTransaction().rollback();
+            }
+            setupManager.close();
+        }
+
+        EntityManager firstManager = entityManagerFactory.createEntityManager();
+        EntityManager secondManager = entityManagerFactory.createEntityManager();
+        try {
+            firstManager.getTransaction().begin();
+            secondManager.getTransaction().begin();
+            Ticket firstCopy = firstManager.find(Ticket.class, ticketId);
+            Ticket secondCopy = secondManager.find(Ticket.class, ticketId);
+
+            firstCopy.updateData("First update", null, null, null);
+            secondCopy.updateData("Second update", null, null, null);
+            firstManager.getTransaction().commit();
+
+            assertThrows(OptimisticLockException.class, secondManager::flush);
+            secondManager.getTransaction().rollback();
+        } finally {
+            if (firstManager.getTransaction().isActive()) {
+                firstManager.getTransaction().rollback();
+            }
+            if (secondManager.getTransaction().isActive()) {
+                secondManager.getTransaction().rollback();
+            }
+            firstManager.close();
+            secondManager.close();
+
+            EntityManager cleanupManager = entityManagerFactory.createEntityManager();
+            try {
+                cleanupManager.getTransaction().begin();
+                Ticket persistedTicket = cleanupManager.find(Ticket.class, ticketId);
+                if (persistedTicket != null) {
+                    cleanupManager.remove(persistedTicket);
+                }
+                cleanupManager.getTransaction().commit();
+            } finally {
+                if (cleanupManager.getTransaction().isActive()) {
+                    cleanupManager.getTransaction().rollback();
+                }
+                cleanupManager.close();
+            }
+        }
     }
 
     @Test

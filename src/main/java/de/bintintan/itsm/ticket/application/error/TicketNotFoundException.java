@@ -1,4 +1,4 @@
-package de.bintintan.itsm.ticket.application;
+package de.bintintan.itsm.ticket.application.error;
 
 import java.util.UUID;
 

@@ -1,26 +1,33 @@
 package de.bintintan.itsm.ticket.rest.interfaces;
 
-import de.bintintan.itsm.ticket.application.TicketNotFoundException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.bintintan.itsm.ticket.application.TicketService;
+import de.bintintan.itsm.ticket.application.UpdateTicketCommand;
+import de.bintintan.itsm.ticket.application.error.TicketNotFoundException;
+import de.bintintan.itsm.ticket.application.error.TicketValidationException;
 import de.bintintan.itsm.ticket.domain.Page;
 import de.bintintan.itsm.ticket.domain.Ticket;
 import de.bintintan.itsm.ticket.domain.TicketStatus;
-import de.bintintan.itsm.ticket.rest.dto.CreateTicketRequest;
-import de.bintintan.itsm.ticket.rest.dto.PageResponse;
-import de.bintintan.itsm.ticket.rest.dto.StartTicketRequest;
-import de.bintintan.itsm.ticket.rest.dto.TicketDTO;
+import de.bintintan.itsm.ticket.domain.TicketVersionConflictException;
+import de.bintintan.itsm.ticket.rest.dto.*;
 import de.bintintan.itsm.ticket.rest.mapper.TicketMapper;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.core.*;
+import jakarta.ws.rs.ext.ContextResolver;
+import jakarta.ws.rs.ext.Providers;
 
+import java.io.StringReader;
 import java.net.URI;
 import java.util.UUID;
 
@@ -29,15 +36,21 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class TicketResource {
+    private static final String TICKET_TOKEN = "ticket-";
+    private static final String VERSION_TOKEN = "-v";
+
     @Inject
     private TicketService ticketService;
     @Inject
     private TicketMapper ticketMapper;
+    @Context
+    private Providers providers;
 
     @POST
     public Response createTicket(@Valid CreateTicketRequest request, @Context UriInfo uriInfo) {
         Ticket ticket =
-                ticketService.create(request.title(), request.description(), request.priority(), request.dueAt());
+                ticketService.create(request.title(), request.description(), request.priority(), request.dueAt(),
+                        request.assigneeId());
         TicketDTO ticketDTO = ticketMapper.toDTO(ticket);
         URI location = uriInfo.getAbsolutePathBuilder().path(String.valueOf(ticket.getId())).build();
         return Response.created(location).entity(ticketDTO).build();
@@ -55,8 +68,11 @@ public class TicketResource {
     @GET
     @Path("{id}")
     public Response getTicket(@PathParam("id") UUID id) {
-        return ticketService.findById(id).map(ticketMapper::toDTO).map(dto -> Response.ok(dto).build())
-                .orElseThrow(() -> new TicketNotFoundException(id));
+        Ticket ticket = ticketService.findById(id).orElseThrow(() -> new TicketNotFoundException(id));
+
+        EntityTag etag = new EntityTag(getTicketVersionETag(ticket));
+
+        return Response.ok(ticketMapper.toDTO(ticket)).tag(etag).build();
     }
 
     @POST
@@ -82,5 +98,92 @@ public class TicketResource {
         Page<Ticket> ticketPage = ticketService.searchTickets(status, assigneeId, page, size);
         return new PageResponse<>(ticketPage.content().stream().map(ticketMapper::toDTO).toList(), ticketPage.page(),
                 ticketPage.size(), ticketPage.totalElements(), ticketPage.totalPages());
+    }
+
+    @PATCH
+    @Path("{id}/merge")
+    @Consumes("application/merge-patch+json")
+    public Response mergeTicket(@PathParam("id") UUID id, @HeaderParam(HttpHeaders.IF_MATCH) EntityTag ifMatch,
+                                JsonObject jsonObject)
+            throws TicketVersionConflictException, TicketValidationException {
+        if (ifMatch == null) {
+            return Response.status(Response.Status.PRECONDITION_REQUIRED).build();
+        }
+        if (ifMatch.isWeak()) {
+            return Response.status(Response.Status.PRECONDITION_FAILED).build();
+        }
+
+        Ticket ticket;
+        try {
+            Ticket currentTicket = ticketService.findById(id).orElseThrow(() -> new TicketNotFoundException(id));
+            JsonValue patchedJson =
+                    Json.createMergePatch(jsonObject).apply(toJsonValue(ticketMapper.toDTO(currentTicket)));
+            TicketDTO dto = toDtoValue(patchedJson);
+            UpdateTicketCommand ticketCommand =
+                    new UpdateTicketCommand(dto.title(), dto.description(), dto.priority(), dto.assigneeId(),
+                            dto.dueAt());
+            ticket = ticketService.update(id, extractVersionNumber(ifMatch.getValue(), id), ticketCommand);
+        } catch (JsonProcessingException e) {
+            throw new TicketValidationException(e.getOriginalMessage());
+        }
+
+        EntityTag etag = new EntityTag(getTicketVersionETag(ticket));
+        return Response.ok(ticketMapper.toDTO(ticket)).tag(etag).build();
+    }
+
+    @PUT
+    @Path("{id}/update")
+    public Response updateTicket(@PathParam("id") UUID id, @HeaderParam(HttpHeaders.IF_MATCH) EntityTag ifMatch,
+                                 @Valid UpdateTicketRequest updateTicketRequest)
+            throws TicketVersionConflictException, TicketValidationException {
+        if (ifMatch == null) {
+            return Response.status(Response.Status.PRECONDITION_REQUIRED).build();
+        }
+        if (ifMatch.isWeak()) {
+            return Response.status(Response.Status.PRECONDITION_FAILED).build();
+        }
+
+        UpdateTicketCommand ticketCommand =
+                new UpdateTicketCommand(updateTicketRequest.title(), updateTicketRequest.description(),
+                        updateTicketRequest.priority(), updateTicketRequest.assigneeId(), updateTicketRequest.dueAt());
+        Ticket ticket = ticketService.update(id, extractVersionNumber(ifMatch.getValue(), id), ticketCommand);
+        EntityTag etag = new EntityTag(getTicketVersionETag(ticket));
+        return Response.ok(ticketMapper.toDTO(ticket)).tag(etag).build();
+    }
+
+    private static int extractVersionNumber(@Nonnull String expectedVersion, UUID ticketId)
+            throws TicketValidationException {
+        if (!expectedVersion.startsWith(TICKET_TOKEN) || !expectedVersion.contains(VERSION_TOKEN)) {
+            throw new TicketValidationException("Invalid ticket version ETag value");
+        }
+        int versionIndex = expectedVersion.indexOf(VERSION_TOKEN);
+        UUID expectedId = UUID.fromString(expectedVersion.substring(TICKET_TOKEN.length(), versionIndex));
+        if (expectedId.compareTo(ticketId) != 0) {
+            throw new TicketValidationException("Mismatching ticket id found");
+        }
+        return Integer.parseInt(expectedVersion.substring(versionIndex + VERSION_TOKEN.length()).trim());
+    }
+
+    @Nonnull
+    public static String getTicketVersionETag(@Nonnull Ticket ticket) {
+        return TICKET_TOKEN + ticket.getId() + VERSION_TOKEN + ticket.getVersion();
+    }
+
+    private JsonValue toJsonValue(Object representation) throws JsonProcessingException {
+        ContextResolver<ObjectMapper> resolver =
+                providers.getContextResolver(ObjectMapper.class, MediaType.APPLICATION_JSON_TYPE);
+        ObjectMapper mapper = resolver.getContext(TicketDTO.class);
+
+        String json = mapper.writeValueAsString(representation);
+        try (JsonReader reader = Json.createReader(new StringReader(json))) {
+            return reader.readValue();
+        }
+    }
+
+    private TicketDTO toDtoValue(JsonValue representation) throws JsonProcessingException {
+        ContextResolver<ObjectMapper> resolver =
+                providers.getContextResolver(ObjectMapper.class, MediaType.APPLICATION_JSON_TYPE);
+        ObjectMapper mapper = resolver.getContext(TicketDTO.class);
+        return mapper.readValue(representation.toString(), TicketDTO.class);
     }
 }
