@@ -1,10 +1,12 @@
-package de.bintintan.itsm.ticket.rest.error;
+package de.bintintan.itsm.ticket.interfaces.rest.error;
 
 import de.bintintan.itsm.common.interfaces.rest.error.*;
 import de.bintintan.itsm.ticket.application.error.TicketNotFoundException;
-import de.bintintan.itsm.ticket.application.error.TicketVersionConflictExceptionMapper;
 import de.bintintan.itsm.ticket.domain.TicketVersionConflictException;
 import de.bintintan.itsm.ticket.domain.InvalidStatusTransitionException;
+import de.bintintan.itsm.ticket.interfaces.rest.error.TicketNotFoundExceptionMapper;
+import de.bintintan.itsm.ticket.interfaces.rest.error.TicketProcessingExceptionMapper;
+import de.bintintan.itsm.ticket.interfaces.rest.error.TicketVersionConflictExceptionMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;

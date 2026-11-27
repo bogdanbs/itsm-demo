@@ -1,4 +1,4 @@
-package de.bintintan.itsm.ticket.rest.interfaces;
+package de.bintintan.itsm.ticket.interfaces.rest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,8 +10,9 @@ import de.bintintan.itsm.ticket.domain.Page;
 import de.bintintan.itsm.ticket.domain.Ticket;
 import de.bintintan.itsm.ticket.domain.TicketStatus;
 import de.bintintan.itsm.ticket.domain.TicketVersionConflictException;
-import de.bintintan.itsm.ticket.rest.dto.*;
-import de.bintintan.itsm.ticket.rest.mapper.TicketMapper;
+import de.bintintan.itsm.ticket.domain.query.TicketQuery;
+import de.bintintan.itsm.ticket.interfaces.dto.TicketDTO;
+import de.bintintan.itsm.ticket.interfaces.mapper.TicketMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -59,8 +60,7 @@ public class TicketResource {
     @GET
     public PageResponse<TicketDTO> getTickets(@QueryParam("page") @DefaultValue("0") @Min(0) int page,
                                               @QueryParam("size") @DefaultValue("20") @Min(1) @Max(100) int size) {
-
-        Page<Ticket> ticketPage = ticketService.findTickets(page, size);
+        Page<Ticket> ticketPage = ticketService.findTickets(null, null, page, size);
         return new PageResponse<>(ticketPage.content().stream().map(ticketMapper::toDTO).toList(), ticketPage.page(),
                 ticketPage.size(), ticketPage.totalElements(), ticketPage.totalPages());
     }
@@ -95,7 +95,7 @@ public class TicketResource {
                                                  @QueryParam("assigneeId") UUID assigneeId,
                                                  @QueryParam("page") @DefaultValue("0") @Min(0) int page,
                                                  @QueryParam("size") @DefaultValue("20") @Min(1) @Max(100) int size) {
-        Page<Ticket> ticketPage = ticketService.searchTickets(status, assigneeId, page, size);
+        Page<Ticket> ticketPage = ticketService.findTickets(new TicketQuery(status, null, assigneeId, null, null, null), null, page, size);
         return new PageResponse<>(ticketPage.content().stream().map(ticketMapper::toDTO).toList(), ticketPage.page(),
                 ticketPage.size(), ticketPage.totalElements(), ticketPage.totalPages());
     }

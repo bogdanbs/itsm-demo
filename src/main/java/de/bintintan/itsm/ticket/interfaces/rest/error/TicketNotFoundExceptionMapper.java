@@ -1,5 +1,6 @@
-package de.bintintan.itsm.common.interfaces.rest.error;
+package de.bintintan.itsm.ticket.interfaces.rest.error;
 
+import de.bintintan.itsm.common.interfaces.rest.error.ErrorResponse;
 import de.bintintan.itsm.ticket.application.error.TicketNotFoundException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;

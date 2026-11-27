@@ -1,4 +1,4 @@
-package de.bintintan.itsm.ticket.rest.dto;
+package de.bintintan.itsm.ticket.interfaces.rest;
 
 import java.util.List;
 

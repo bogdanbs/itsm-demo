@@ -1,4 +1,4 @@
-package de.bintintan.itsm.ticket.application.error;
+package de.bintintan.itsm.ticket.interfaces.rest.error;
 
 import de.bintintan.itsm.common.interfaces.rest.error.ErrorResponse;
 import de.bintintan.itsm.ticket.domain.TicketVersionConflictException;

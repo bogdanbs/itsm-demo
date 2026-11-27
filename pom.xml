@@ -22,8 +22,8 @@
         <flyway.version>13.12.2</flyway.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <hibernate.version>6.6.1.Final</hibernate.version>
-        <hibernate-validator.version>8.0.1.Final</hibernate-validator.version>
-        <h2.version>2.3.232</h2.version>
+        <hibernate-validator.version>8.0.6.Final</hibernate-validator.version>
+        <h2.version>2.5.252</h2.version>
         <org.mapstruct.version>1.6.3</org.mapstruct.version>
         <jackson.core.version>2.23.0</jackson.core.version>
         <jackson.annotation.version>2.23</jackson.annotation.version>

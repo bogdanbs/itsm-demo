@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:h="jakarta.faces.html"
-      xmlns:f="jakarta.faces.core"
       xmlns:p="http://primefaces.org/ui">
 <h:head>
     <title>ITSM Demo</title>
 </h:head>
 <h:body style="max-width: 720px; margin: 2rem auto; font-family: sans-serif;">
+    <h:form id="menuForm">
+        <p:menubar style="max-width: 720px; margin: 2rem auto;">
+            <p:menuitem value="Home" outcome="/index.xhtml" icon="pi pi-home"/>
+            <p:menuitem value="Tickets" outcome="/tickets.xhtml" icon="pi pi-ticket"/>
+        </p:menubar>
+    </h:form>
     <h:form id="statusForm">
         <p:growl id="messages" showDetail="true"/>
 

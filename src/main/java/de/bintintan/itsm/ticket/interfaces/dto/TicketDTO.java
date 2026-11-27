@@ -1,4 +1,4 @@
-package de.bintintan.itsm.ticket.rest.dto;
+package de.bintintan.itsm.ticket.interfaces.dto;
 
 import de.bintintan.itsm.ticket.domain.TicketPriority;
 import de.bintintan.itsm.ticket.domain.TicketStatus;

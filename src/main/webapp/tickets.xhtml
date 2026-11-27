@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:p="http://primefaces.org/ui">
+<h:head>
+    <title>Tickets</title>
+</h:head>
+<h:body style="max-width: 1220px; margin: 2rem auto; font-family: sans-serif;">
+    <h:form id="statusForm">
+        <p:growl id="messages" showDetail="true"/>
+        <p:dataTable var="ticket"
+                     value="#{ticketsView.lazyModel}"
+                     widgetVar="ticketsTableWidget"
+                     lazy="true"
+                     paginator="true"
+                     rows="5"
+                     tableStyle="width: auto; min-width: 100%;"
+                     paginatorPosition="both"
+                     paginatorTemplate="{CurrentPageReport} {FirstPageLink} {PreviousPageLink} {PageLinks} {NextPageLink} {LastPageLink} {RowsPerPageDropdown}"
+                     currentPageReportTemplate="{startRecord}-{endRecord} of {totalRecords} tickets"
+                     rowsPerPageTemplate="5,10,{ShowAll|'All'}"
+                     selectionMode="single"
+                     sortMode="multiple">
+            <f:facet name="header">
+                Tickets view
+            </f:facet>
+            <p:column field="title" headerText="Title" sortBy="#{ticket.title}"
+                      style="max-width: 200px; white-space: normal;">
+                <h:outputText value="#{ticket.title}"/>
+            </p:column>
+            <p:column field="priority" headerText="Priority" sortBy="#{ticket.priority}" filterMatchMode="exact"
+                      style="width: 1%; white-space: nowrap;">
+                <f:facet name="filter">
+                    <p:selectOneMenu onchange="PF('ticketsTableWidget').filter()">
+                        <f:selectItem itemLabel="All" itemValue="#{null}" noSelectionOption="true"/>
+                        <f:selectItems value="#{ticketsView.ticketPriorities}"/>
+                    </p:selectOneMenu>
+                </f:facet>
+                <p:tag value="#{ticket.priority}"/>
+            </p:column>
+            <p:column field="status" headerText="Status" sortBy="#{ticket.status}"
+                      filterMatchMode="exact" style="width: 1%; white-space: nowrap;">
+                <f:facet name="filter">
+                    <p:selectOneMenu onchange="PF('ticketsTableWidget').filter()">
+                        <f:selectItem itemLabel="All" itemValue="#{null}" noSelectionOption="true"/>
+                        <f:selectItems value="#{ticketsView.ticketStatuses}"/>
+                    </p:selectOneMenu>
+                </f:facet>
+                <p:tag value="#{ticket.status}"/>
+            </p:column>
+            <p:column field="assigneeId" headerText="Assignee Id" style="width: 1%; white-space: nowrap;">
+                <h:outputText value="#{ticket.assigneeId}"/>
+            </p:column>
+            <p:column field="dueAt" headerText="Due at" sortBy="#{ticket.dueAt}" filterBy="#{ticket.dueAt}"
+                      filterMatchMode="between" style="width: 1%; white-space: nowrap;">
+                <f:facet name="filter">
+                    <p:datePicker selectionMode="range"
+                                  pattern="dd.MM.yyyy"
+                                  readonlyInput="true"
+                                  showButtonBar="true"
+                                  hideOnRangeSelection="true"
+                                  onchange="PF('ticketsTableWidget').filter()"/>
+                </f:facet>
+                <h:outputText value="#{ticketsView.formatDueAt(ticket.dueAt)}"/>
+            </p:column>
+        </p:dataTable>
+    </h:form>
+</h:body>
+</html>

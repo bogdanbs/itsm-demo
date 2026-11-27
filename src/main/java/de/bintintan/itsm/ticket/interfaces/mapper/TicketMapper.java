@@ -1,7 +1,7 @@
-package de.bintintan.itsm.ticket.rest.mapper;
+package de.bintintan.itsm.ticket.interfaces.mapper;
 
 import de.bintintan.itsm.ticket.domain.Ticket;
-import de.bintintan.itsm.ticket.rest.dto.TicketDTO;
+import de.bintintan.itsm.ticket.interfaces.dto.TicketDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.ReportingPolicy;

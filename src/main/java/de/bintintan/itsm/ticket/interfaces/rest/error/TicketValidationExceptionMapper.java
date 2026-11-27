@@ -1,7 +1,7 @@
-package de.bintintan.itsm.common.interfaces.rest.error;
+package de.bintintan.itsm.ticket.interfaces.rest.error;
 
+import de.bintintan.itsm.common.interfaces.rest.error.ErrorResponse;
 import de.bintintan.itsm.ticket.application.error.TicketValidationException;
-import de.bintintan.itsm.ticket.domain.TicketProcessingException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;

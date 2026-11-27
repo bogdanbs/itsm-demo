@@ -1,6 +1,6 @@
-package de.bintintan.itsm.ticket.rest.filter;
+package de.bintintan.itsm.ticket.interfaces.rest;
 
-import de.bintintan.itsm.ticket.rest.dto.TicketDTO;
+import de.bintintan.itsm.ticket.interfaces.dto.TicketDTO;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;

@@ -1,4 +1,4 @@
-package de.bintintan.itsm.ticket.rest.dto;
+package de.bintintan.itsm.ticket.interfaces.rest;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import de.bintintan.itsm.ticket.domain.TicketPriority;

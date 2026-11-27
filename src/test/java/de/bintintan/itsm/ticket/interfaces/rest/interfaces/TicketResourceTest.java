@@ -1,4 +1,4 @@
-package de.bintintan.itsm.ticket.rest.interfaces;
+package de.bintintan.itsm.ticket.interfaces.rest.interfaces;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.bintintan.itsm.common.interfaces.rest.config.JacksonConfig;
@@ -8,9 +8,10 @@ import de.bintintan.itsm.ticket.application.error.TicketNotFoundException;
 import de.bintintan.itsm.ticket.domain.Ticket;
 import de.bintintan.itsm.ticket.domain.TicketPriority;
 import de.bintintan.itsm.ticket.domain.TicketStatus;
-import de.bintintan.itsm.ticket.rest.dto.TicketDTO;
-import de.bintintan.itsm.ticket.rest.dto.UpdateTicketRequest;
-import de.bintintan.itsm.ticket.rest.mapper.TicketMapper;
+import de.bintintan.itsm.ticket.interfaces.dto.TicketDTO;
+import de.bintintan.itsm.ticket.interfaces.rest.TicketResource;
+import de.bintintan.itsm.ticket.interfaces.rest.UpdateTicketRequest;
+import de.bintintan.itsm.ticket.interfaces.mapper.TicketMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.EntityTag;
@@ -192,8 +193,12 @@ class TicketResourceTest {
         JsonObject patch = Json.createObjectBuilder().add("title", "Patched title").build();
         when(ticketService.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(TicketNotFoundException.class, () -> ticketResource.mergeTicket(
-                id, new EntityTag("ticket-" + id + "-v0"), patch));
+        assertThrows(TicketNotFoundException.class, () -> {
+            try (Response ignored = ticketResource.mergeTicket(
+                    id, new EntityTag("ticket-" + id + "-v0"), patch)) {
+                fail("Expected TicketNotFoundException");
+            }
+        });
 
         verify(ticketService).findById(id);
         verifyNoInteractions(ticketMapper);

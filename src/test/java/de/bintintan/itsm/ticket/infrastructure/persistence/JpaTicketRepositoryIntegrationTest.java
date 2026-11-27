@@ -1,9 +1,9 @@
 package de.bintintan.itsm.ticket.infrastructure.persistence;
 
-import de.bintintan.itsm.ticket.domain.Page;
 import de.bintintan.itsm.ticket.domain.Ticket;
 import de.bintintan.itsm.ticket.domain.TicketPriority;
 import de.bintintan.itsm.ticket.domain.TicketStatus;
+import de.bintintan.itsm.ticket.domain.query.TicketQuery;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.OptimisticLockException;
@@ -55,17 +55,17 @@ class JpaTicketRepositoryIntegrationTest {
             }
             entityManager.clear();
 
-            Page<Ticket> firstPage = repository.findTickets(0, 2);
-            Page<Ticket> secondPage = repository.findTickets(1, 2);
-            Page<Ticket> finalPage = repository.findTickets(2, 2);
+            List<Ticket> firstPage = repository.search(null, null, 0, 2);
+            List<Ticket> secondPage = repository.search(null, null, 1, 2);
+            List<Ticket> finalPage = repository.search(null, null, 2, 2);
             List<Ticket> allPages = new ArrayList<>();
-            allPages.addAll(firstPage.content());
-            allPages.addAll(secondPage.content());
-            allPages.addAll(finalPage.content());
+            allPages.addAll(firstPage);
+            allPages.addAll(secondPage);
+            allPages.addAll(finalPage);
 
-            assertEquals(2, firstPage.content().size());
-            assertEquals(2, secondPage.content().size());
-            assertEquals(1, finalPage.content().size());
+            assertEquals(2, firstPage.size());
+            assertEquals(2, secondPage.size());
+            assertEquals(1, finalPage.size());
             assertEquals(expectedIds,
                     allPages.stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
             assertEquals(entityManager.createQuery("SELECT t.id FROM Ticket t ORDER BY t.createdAt DESC, t.id ASC",
@@ -82,15 +82,15 @@ class JpaTicketRepositoryIntegrationTest {
     void rejectsNegativeOffset() {
         JpaTicketRepository repository = new JpaTicketRepository();
 
-        assertThrows(IllegalArgumentException.class, () -> repository.findTickets(-1, 10));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, -1, 10));
     }
 
     @Test
     void rejectsNonPositiveLimit() {
         JpaTicketRepository repository = new JpaTicketRepository();
 
-        assertThrows(IllegalArgumentException.class, () -> repository.findTickets(0, 0));
-        assertThrows(IllegalArgumentException.class, () -> repository.findTickets(0, -1));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, 0, -1));
     }
 
     @Test
@@ -161,16 +161,17 @@ class JpaTicketRepositoryIntegrationTest {
             entityManager.flush();
             entityManager.clear();
 
-            Page<Ticket> page = repository.findTickets(1, 2);
-            Page<Ticket> orderedTickets = repository.findTickets(0, tickets.size());
-            List<Ticket> expectedContent = orderedTickets.content().subList(2, 4);
+            List<Ticket> page = repository.search(null, null, 1, 2);
+            long totalPageElements = repository.count(null);
+            List<Ticket> orderedTickets = repository.search(null, null, 0, tickets.size());
+            List<Ticket> expectedContent = orderedTickets.subList(2, 4);
+            int totalPages = (int) Math.ceil((double) totalPageElements / 2);
 
-            assertEquals(expectedContent, page.content());
-            assertEquals(1, page.page());
+            assertEquals(expectedContent, page);
             assertEquals(2, page.size());
-            assertEquals(7, page.totalElements());
-            assertEquals(4, page.totalPages());
-            for (Ticket ticket : page.content()) {
+            assertEquals(7, totalPageElements);
+            assertEquals(4, totalPages);
+            for (Ticket ticket : page) {
                 Ticket source = tickets.stream().filter(pTicket -> pTicket.getId().equals(ticket.getId())).findFirst()
                         .orElseThrow();
                 assertMatches(source, ticket);
@@ -185,11 +186,13 @@ class JpaTicketRepositoryIntegrationTest {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
         try {
             entityManager.getTransaction().begin();
-            Page<Ticket> page = repository(entityManager).findTickets(0, 20);
+            List<Ticket> page = repository(entityManager).search(null, null, 0, 20);
+            long totalElements = repository(entityManager).count(null);
+            int totalPages = (int) Math.ceil((double) totalElements / 20);
 
-            assertEquals(List.of(), page.content());
-            assertEquals(0, page.totalElements());
-            assertEquals(0, page.totalPages());
+            assertEquals(List.of(), page);
+            assertEquals(0, totalElements);
+            assertEquals(0, totalPages);
         } finally {
             rollbackAndClose(entityManager);
         }
@@ -197,12 +200,13 @@ class JpaTicketRepositoryIntegrationTest {
 
     @Test
     void findTicketsRejectsInvalidPagination() {
-        JpaTicketRepository repository = repository(null);
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        JpaTicketRepository repository = repository(entityManager);
 
-        assertThrows(IllegalArgumentException.class, () -> repository.findTickets(-1, 10));
-        assertThrows(IllegalArgumentException.class, () -> repository.findTickets(0, 0));
-        assertThrows(IllegalArgumentException.class, () -> repository.findTickets(0, -1));
-        assertThrows(IllegalArgumentException.class, () -> repository.findTickets(Integer.MAX_VALUE, 2));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, -1, 10));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, 0, -1));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, Integer.MAX_VALUE, 2));
     }
 
     @Test
@@ -215,46 +219,57 @@ class JpaTicketRepositoryIntegrationTest {
             entityManager.flush();
             entityManager.clear();
 
-            Page<Ticket> unfiltered = repository.searchTickets(null, null, 0, 20);
-            Page<Ticket> byStatus = repository.searchTickets(TicketStatus.OPEN, null, 0, 20);
-            Page<Ticket> byAssignee = repository.searchTickets(null, ASSIGNEE_A, 0, 20);
-            Page<Ticket> firstFilteredPage = repository.searchTickets(TicketStatus.OPEN, ASSIGNEE_A, 0, 2);
-            Page<Ticket> secondFilteredPage = repository.searchTickets(TicketStatus.OPEN, ASSIGNEE_A, 1, 2);
-            Page<Ticket> noMatches = repository.searchTickets(TicketStatus.CLOSED, ASSIGNEE_B, 0, 20);
+            List<Ticket> unfiltered = repository.search(null, null, 0, 20);
+            long totalUnfilteredElements = repository.count(null);
+            TicketQuery ticketQuery = new TicketQuery(TicketStatus.OPEN, null, null, null, null, null);
+            List<Ticket> byStatus = repository.search(ticketQuery, null, 0, 20);
+            long totalByStatusElements = repository.count(ticketQuery);
+            ticketQuery = new TicketQuery(null, null, ASSIGNEE_A, null, null, null);
+            List<Ticket> byAssignee = repository.search(ticketQuery, null, 0, 20);
+            long totalByAssigneeElements = repository.count(ticketQuery);
+            ticketQuery = new TicketQuery(TicketStatus.OPEN, null, ASSIGNEE_A, null, null, null);
+            List<Ticket> firstFilteredPage = repository.search(ticketQuery, null, 0, 2);
+            long totalFirstFilteredPageElements = repository.count(ticketQuery);
+            ticketQuery = new TicketQuery(TicketStatus.OPEN, null, ASSIGNEE_A, null, null, null);
+            List<Ticket> secondFilteredPage = repository.search(ticketQuery, null, 1, 2);
+            long totalSecondFilteredPageElements = repository.count(ticketQuery);
+            ticketQuery = new TicketQuery(TicketStatus.CLOSED, null, ASSIGNEE_B, null, null, null);
+            List<Ticket> noMatches = repository.search(ticketQuery, null, 0, 20);
+            long totalNoMatchesElements = repository.count(ticketQuery);
 
-            assertEquals(7, unfiltered.totalElements());
+            assertEquals(7, totalUnfilteredElements);
             assertEquals(tickets.stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()),
-                    unfiltered.content().stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
+                    unfiltered.stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
 
-            assertEquals(4, byStatus.totalElements());
-            assertEquals(4, byStatus.content().size());
+            assertEquals(4, totalByStatusElements);
+            assertEquals(4, byStatus.size());
             assertEquals(tickets.stream().filter(ticket -> ticket.getStatus() == TicketStatus.OPEN).map(Ticket::getId)
                             .collect(java.util.stream.Collectors.toSet()),
-                    byStatus.content().stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
-            assertEquals(5, byAssignee.totalElements());
-            assertEquals(5, byAssignee.content().size());
+                    byStatus.stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
+            assertEquals(5, totalByAssigneeElements);
+            assertEquals(5, byAssignee.size());
             assertEquals(tickets.stream().filter(ticket -> ASSIGNEE_A.equals(ticket.getAssigneeId())).map(Ticket::getId)
                             .collect(java.util.stream.Collectors.toSet()),
-                    byAssignee.content().stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
+                    byAssignee.stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
 
-            List<Ticket> bothPages = new ArrayList<>(firstFilteredPage.content());
-            bothPages.addAll(secondFilteredPage.content());
-            assertEquals(2, firstFilteredPage.content().size());
-            assertEquals(1, secondFilteredPage.content().size());
-            assertEquals(0, firstFilteredPage.page());
-            assertEquals(1, secondFilteredPage.page());
+            List<Ticket> bothPages = new ArrayList<>(firstFilteredPage);
+            bothPages.addAll(secondFilteredPage);
+
+            int totalFirstFilteredPages = (int) Math.ceil((double) totalFirstFilteredPageElements / 2);
+            int totalNoMatchPages = (int) Math.ceil((double) totalNoMatchesElements / 20);
+
             assertEquals(2, firstFilteredPage.size());
-            assertEquals(2, secondFilteredPage.size());
-            assertEquals(3, firstFilteredPage.totalElements());
-            assertEquals(2, firstFilteredPage.totalPages());
-            assertEquals(3, secondFilteredPage.totalElements());
+            assertEquals(1, secondFilteredPage.size());
+            assertEquals(3, totalFirstFilteredPageElements);
+            assertEquals(2, totalFirstFilteredPages);
+            assertEquals(3, totalSecondFilteredPageElements);
             assertEquals(tickets.stream().filter(ticket -> ticket.getStatus() == TicketStatus.OPEN && ASSIGNEE_A.equals(
                             ticket.getAssigneeId())).map(Ticket::getId).collect(java.util.stream.Collectors.toSet()),
                     bothPages.stream().map(Ticket::getId).collect(java.util.stream.Collectors.toSet()));
 
-            assertEquals(List.of(), noMatches.content());
-            assertEquals(0, noMatches.totalElements());
-            assertEquals(0, noMatches.totalPages());
+            assertEquals(List.of(), noMatches);
+            assertEquals(0, totalNoMatchesElements);
+            assertEquals(0, totalNoMatchPages);
         } finally {
             rollbackAndClose(entityManager);
         }
@@ -262,12 +277,13 @@ class JpaTicketRepositoryIntegrationTest {
 
     @Test
     void searchTicketsRejectsInvalidPagination() {
-        JpaTicketRepository repository = repository(null);
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        JpaTicketRepository repository = repository(entityManager);
 
-        assertThrows(IllegalArgumentException.class, () -> repository.searchTickets(null, null, -1, 10));
-        assertThrows(IllegalArgumentException.class, () -> repository.searchTickets(null, null, 0, 0));
-        assertThrows(IllegalArgumentException.class, () -> repository.searchTickets(null, null, 0, -1));
-        assertThrows(IllegalArgumentException.class, () -> repository.searchTickets(null, null, Integer.MAX_VALUE, 2));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, -1, 10));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, 0, -1));
+        assertThrows(IllegalArgumentException.class, () -> repository.search(null, null, Integer.MAX_VALUE, 2));
     }
 
     private static JpaTicketRepository repository(EntityManager entityManager) {
